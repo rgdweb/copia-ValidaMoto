@@ -1,0 +1,57 @@
+name: Build and Sign APK
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+
+    - name: Decode Keystore
+      run: |
+        echo "${{ secrets.SIGNING_KEYSTORE_BASE64 }}" | base64 -d > ${{ github.workspace }}/motovalid-release.jks
+
+    - name: Build Release APK
+      env:
+        SIGNING_KEY_STORE_PATH: ${{ github.workspace }}/motovalid-release.jks
+        SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+        SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+      run: gradle assembleRelease --no-daemon
+
+    - name: Extract Version Info
+      run: |
+        VERSION_CODE=$(grep 'versionCode' app/build.gradle.kts | head -1 | sed 's/[^0-9]*//g')
+        VERSION_NAME=$(grep 'versionName' app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
+        echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+        echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+
+    - name: Send APK to ValidaMoto Panel
+      run: |
+        curl -X POST "http://147.15.77.137:8080/upload_apk.php" \
+          -H "X-API-Token: ${{ secrets.VM_UPLOAD_TOKEN }}" \
+          -H "X-VERSION-NAME: ${{ env.VERSION_NAME }}" \
+          -H "X-VERSION-CODE: ${{ env.VERSION_CODE }}" \
+          --data-binary @app/build/outputs/apk/release/app-release.apk
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ValidaMoto-Release-APK
+        path: app/build/outputs/apk/release/app-release.apk
+        retention-days: 30

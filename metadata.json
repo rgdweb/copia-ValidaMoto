@@ -1,0 +1,6 @@
+{
+  "name": "ValidaMoto",
+  "description": "Validador de aulas práticas de moto (categoria A) 100% offline para instrutores.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

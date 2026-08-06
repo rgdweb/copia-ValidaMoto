@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
 import com.example.util.FileHelper
+import com.example.util.OcrHelper
 import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -877,6 +878,10 @@ fun StepInitialKm(viewModel: AulaViewModel) {
     val fotoPainelInicio by viewModel.fotoPainelInicio.collectAsState()
     val context = LocalContext.current
 
+    // Estados locais para feedback do OCR (nao persistem, apenas UI)
+    var ocrLoading by remember { mutableStateOf(false) }
+    var ocrError by remember { mutableStateOf(false) }
+
     // Take Picture Launcher using rememberSaveable to survive process recreation
     var tempPhotoPath by rememberSaveable { mutableStateOf("") }
 
@@ -890,6 +895,31 @@ fun StepInitialKm(viewModel: AulaViewModel) {
             }
         } else {
             Toast.makeText(context, "Falha ao capturar foto do painel", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // OCR: dispara apenas quando a foto do painel muda (chave exclusiva = fotoPainelInicio)
+    // Nao re-dispara quando setKmInicial atualiza o StateFlow (chave nao depende de KM)
+    LaunchedEffect(fotoPainelInicio) {
+        // Ignora estado inicial vazio (sem foto ainda)
+        if (fotoPainelInicio.isNullOrEmpty()) return@LaunchedEffect
+
+        ocrLoading = true
+        ocrError = false
+        try {
+            val ocrHelper = OcrHelper(context)
+            val uri = Uri.fromFile(File(fotoPainelInicio!!))
+            val result = ocrHelper.recognizeKmFromImage(uri)
+            if (result != null) {
+                viewModel.setKmInicial(result)
+                ocrLoading = false
+            } else {
+                ocrLoading = false
+                ocrError = true
+            }
+        } catch (e: Exception) {
+            ocrLoading = false
+            ocrError = true
         }
     }
 
@@ -1033,9 +1063,27 @@ fun StepInitialKm(viewModel: AulaViewModel) {
                 value = kmInicialInput,
                 onValueChange = { viewModel.setKmInicial(it) },
                 singleLine = true,
+                enabled = !ocrLoading,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Digitação manual obrigatória") }
+                placeholder = {
+                    Text(if (ocrLoading) "Lendo painel..." else "Digitação manual obrigatória")
+                },
+                trailingIcon = {
+                    if (ocrLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
+                },
+                supportingText = {
+                    when {
+                        ocrLoading -> Text("Processando OCR do painel...", color = OrangeAutoescola)
+                        ocrError -> Text("Não foi possível ler o KM automaticamente. Digite manualmente.", color = Color.Red)
+                        else -> Text("")
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -1721,6 +1769,10 @@ fun StepFinalKm(viewModel: AulaViewModel) {
     val fotoPainelFim by viewModel.fotoPainelFim.collectAsState()
     val context = LocalContext.current
 
+    // Estados locais para feedback do OCR (nao persistem, apenas UI)
+    var ocrLoading by remember { mutableStateOf(false) }
+    var ocrError by remember { mutableStateOf(false) }
+
     // Take Picture Launcher using rememberSaveable to survive process recreation
     var tempPhotoPath by rememberSaveable { mutableStateOf("") }
 
@@ -1734,6 +1786,31 @@ fun StepFinalKm(viewModel: AulaViewModel) {
             }
         } else {
             Toast.makeText(context, "Falha ao capturar foto do painel", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // OCR: dispara apenas quando a foto do painel final muda (chave exclusiva = fotoPainelFim)
+    // Nao re-dispara quando setKmFinal atualiza o StateFlow (chave nao depende de KM)
+    LaunchedEffect(fotoPainelFim) {
+        // Ignora estado inicial vazio (sem foto ainda)
+        if (fotoPainelFim.isNullOrEmpty()) return@LaunchedEffect
+
+        ocrLoading = true
+        ocrError = false
+        try {
+            val ocrHelper = OcrHelper(context)
+            val uri = Uri.fromFile(File(fotoPainelFim!!))
+            val result = ocrHelper.recognizeKmFromImage(uri)
+            if (result != null) {
+                viewModel.setKmFinal(result)
+                ocrLoading = false
+            } else {
+                ocrLoading = false
+                ocrError = true
+            }
+        } catch (e: Exception) {
+            ocrLoading = false
+            ocrError = true
         }
     }
 
@@ -1846,9 +1923,27 @@ fun StepFinalKm(viewModel: AulaViewModel) {
                 value = kmFinalInput,
                 onValueChange = { viewModel.setKmFinal(it) },
                 singleLine = true,
+                enabled = !ocrLoading,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Digitação manual obrigatória") }
+                placeholder = {
+                    Text(if (ocrLoading) "Lendo painel..." else "Digitação manual obrigatória")
+                },
+                trailingIcon = {
+                    if (ocrLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
+                },
+                supportingText = {
+                    when {
+                        ocrLoading -> Text("Processando OCR do painel...", color = OrangeAutoescola)
+                        ocrError -> Text("Não foi possível ler o KM automaticamente. Digite manualmente.", color = Color.Red)
+                        else -> Text("")
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))

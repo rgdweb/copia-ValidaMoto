@@ -32,9 +32,9 @@ class OcrHelper(private val context: Context) {
     private val positiveKeyword = "odo"
 
     suspend fun recognizeKmFromImage(imageUri: Uri): String? = withContext(Dispatchers.Default) {
+        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         try {
             val image = InputImage.fromFilePath(context, imageUri)
-            val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
             val result = Tasks.await(recognizer.process(image))
 
             // Candidatos sobreviventes: List<Triple<numero, pontuacao, valorInt>>
@@ -68,8 +68,8 @@ class OcrHelper(private val context: Context) {
                         // Pontuacao multi-criterio:
                         //  + 1000 se tem "ODO" (contexto positivo explicito)
                         //  + digitCount (favorece hodometros 5-6 digitos sem excluir motos 0 km)
-                        //  + valor numerico como desempate final (escala menor)
-                        val score = (if (hasPositive) 1000 else 0) + digitCount + (numValue / 100000)
+                        //  Desempate por valor numerico e feito no comparator (thenByDescending)
+                        val score = (if (hasPositive) 1000 else 0) + digitCount
 
                         candidates.add(Triple(numStr, score, numValue))
                     }
@@ -90,6 +90,13 @@ class OcrHelper(private val context: Context) {
             best?.first
         } catch (e: Exception) {
             null
+        } finally {
+            // Liberar recursos do ML Kit para evitar retencao desnecessaria
+            try {
+                recognizer.close()
+            } catch (closeEx: Exception) {
+                // Silencioso: nao falhar a requisicao por causa de erro na liberacao
+            }
         }
     }
 }

@@ -886,6 +886,7 @@ fun AddAlunoDialogForm(viewModel: CadastrosViewModel, onDismiss: () -> Unit) {
                                 realizadas = 0,
                                 status = "Em andamento",
                                 exame = formatDate(examenDate),
+                                horaExame = formatTime(horaExame),
                                 obs = observacoes,
                                 foto = photoPath
                             )

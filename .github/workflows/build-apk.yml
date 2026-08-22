@@ -32,7 +32,7 @@ jobs:
         SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
         SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-      run: gradle assembleRelease --no-daemon
+      run: ./gradlew assembleRelease --no-daemon
 
     - name: Extract Version Info
       run: |

@@ -306,7 +306,7 @@ fun AgendaScreen(
                     editingAgendamento = null
                 },
                 onSchedule = { alunoId, motoId, timestamp, obs, id ->
-                    viewModel.onEvent(AgendaUiEvent.ScheduleClass(alunoId, motoId, timestamp, obs, id))
+                    viewModel.onEvent(AgendaUiEvent.ScheduleClass(alunoId, motoId, timestamp, obs, id, "AULA"))
                     showScheduleDialog = false
                     editingAgendamento = null
                     val successMsg = if (id == 0L) "Aula agendada com sucesso!" else "Agendamento atualizado com sucesso!"

@@ -699,6 +699,7 @@ fun AddAlunoDialogForm(viewModel: CadastrosViewModel, onDismiss: () -> Unit) {
     var telefone by remember { mutableStateOf("") }
     var contratadas by remember { mutableStateOf("") }
     var examenDate by remember { mutableStateOf("") }
+    var horaExame by remember { mutableStateOf("") }
     var observacoes by remember { mutableStateOf("") }
     var photoPath by remember { mutableStateOf("") }
 
@@ -1574,6 +1575,25 @@ class DateVisualTransformation : VisualTransformation {
             }
         }
         
+        return TransformedText(AnnotatedString(formatted.toString()), offsetMapping)
+    }
+}
+
+private fun formatTime(input: String): String {
+    val clean = input.filter { it.isDigit() }.take(4)
+    if (clean.length < 3) return ""
+    return if (clean.length == 3) "${clean.substring(0, 1)}:${clean.substring(1, 3)}" else "${clean.substring(0, 2)}:${clean.substring(2, 4)}"
+}
+
+class TimeVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val originalText = text.text
+        val formatted = StringBuilder()
+        for (i in originalText.indices) { if (i == 2) formatted.append(':'); formatted.append(originalText[i]) }
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int { val m = if (offset <= 2) offset else offset + 1; return m.coerceIn(0, formatted.length) }
+            override fun transformedToOriginal(offset: Int): Int { val m = if (offset <= 2) offset else offset - 1; return m.coerceIn(0, originalText.length) }
+        }
         return TransformedText(AnnotatedString(formatted.toString()), offsetMapping)
     }
 }

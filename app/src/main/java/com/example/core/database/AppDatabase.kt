@@ -19,7 +19,7 @@ import com.example.core.database.entity.*
         EventoLog::class,
         Agendamento::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -152,6 +152,22 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("PRAGMA foreign_keys=OFF;")
+                db.execSQL("ALTER TABLE `aluno` ADD COLUMN `horaExame` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `agendamento_new` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `alunoId` INTEGER NOT NULL, `motoId` INTEGER, `dataHora` INTEGER NOT NULL, `status` TEXT NOT NULL, `observacoes` TEXT NOT NULL, `tipo` TEXT NOT NULL, FOREIGN KEY(`alunoId`) REFERENCES `aluno`(`id`) ON UPDATE NO_ACTION ON DELETE NO_ACTION, FOREIGN KEY(`motoId`) REFERENCES `moto`(`id`) ON UPDATE NO_ACTION ON DELETE NO_ACTION)")
+                db.execSQL("INSERT INTO `agendamento_new` (`id`, `alunoId`, `motoId`, `dataHora`, `status`, `observacoes`, `tipo`) SELECT `id`, `alunoId`, `motoId`, `dataHora`, `status`, `observacoes`, 'AULA' FROM `agendamento`")
+                db.execSQL("DROP TABLE `agendamento`")
+                db.execSQL("ALTER TABLE `agendamento_new` RENAME TO `agendamento`")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_agendamento_alunoId` ON `agendamento` (`alunoId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_agendamento_motoId` ON `agendamento` (`motoId`)")
+                db.execSQL("INSERT INTO `agendamento` (`alunoId`, `motoId`, `dataHora`, `status`, `observacoes`, `tipo`) SELECT a.`id`, NULL, 0, 'agendada', 'EXAME migrado', 'EXAME' FROM `aluno` a WHERE a.`dataExame` IS NOT NULL AND a.`dataExame` != '' AND length(a.`dataExame`) = 10 AND substr(a.`dataExame`, 3, 1) = '/' AND substr(a.`dataExame`, 6, 1) = '/' AND NOT EXISTS (SELECT 1 FROM `agendamento` ag2 WHERE ag2.`alunoId` = a.`id` AND ag2.`tipo` = 'EXAME')")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_agendamento_exame_aluno_unique` ON `agendamento`(`alunoId`) WHERE `tipo` = 'EXAME'")
+                db.execSQL("PRAGMA foreign_keys=ON;")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -159,7 +175,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "valida_moto_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

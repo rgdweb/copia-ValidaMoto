@@ -156,7 +156,7 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("PRAGMA foreign_keys=OFF;")
                 db.execSQL("ALTER TABLE `aluno` ADD COLUMN `horaExame` TEXT NOT NULL DEFAULT ''")
-                db.execSQL("CREATE TABLE IF NOT EXISTS `agendamento_new` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `alunoId` INTEGER NOT NULL, `motoId` INTEGER, `dataHora` INTEGER NOT NULL, `status` TEXT NOT NULL, `observacoes` TEXT NOT NULL, `tipo` TEXT NOT NULL, FOREIGN KEY(`alunoId`) REFERENCES `aluno`(`id`) ON UPDATE NO_ACTION ON DELETE NO_ACTION, FOREIGN KEY(`motoId`) REFERENCES `moto`(`id`) ON UPDATE NO_ACTION ON DELETE NO_ACTION)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `agendamento_new` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `alunoId` INTEGER NOT NULL, `motoId` INTEGER, `dataHora` INTEGER NOT NULL, `status` TEXT NOT NULL, `observacoes` TEXT NOT NULL, `tipo` TEXT NOT NULL, FOREIGN KEY(`alunoId`) REFERENCES `aluno`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, FOREIGN KEY(`motoId`) REFERENCES `moto`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)")
                 db.execSQL("INSERT INTO `agendamento_new` (`id`, `alunoId`, `motoId`, `dataHora`, `status`, `observacoes`, `tipo`) SELECT `id`, `alunoId`, `motoId`, `dataHora`, `status`, `observacoes`, 'AULA' FROM `agendamento`")
                 db.execSQL("DROP TABLE `agendamento`")
                 db.execSQL("ALTER TABLE `agendamento_new` RENAME TO `agendamento`")

@@ -12,6 +12,7 @@ sealed interface CadastrosUiEvent {
         val realizadas: Int,
         val status: String,
         val exame: String,
+        val horaExame: String,
         val obs: String,
         val foto: String
     ) : CadastrosUiEvent

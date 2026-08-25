@@ -379,8 +379,10 @@ fun AgendaItemCard(
     val sdf = remember { SimpleDateFormat("dd/MM/yyyy 'às' HH:mm", Locale.getDefault()) }
     val formattedDate = sdf.format(Date(item.dataHora))
 
+    val isExame = item.tipo == "EXAME"
+
     val statusColor = when (item.status) {
-        "agendada" -> Color(0xFF3B82F6) // Blue
+        "agendada" -> if (isExame) Color(0xFF9333EA) else Color(0xFF3B82F6) // Purple for EXAME, Blue for AULA
         "realizada" -> Color(0xFF10B981) // Green
         "cancelada" -> Color(0xFFEF4444) // Red
         else -> Color.Gray
@@ -392,6 +394,8 @@ fun AgendaItemCard(
         "cancelada" -> "Cancelada"
         else -> item.status.replaceFirstChar { it.uppercase() }
     }
+
+    val typeLabel = if (isExame) "EXAME DETRAN" else "AULA"
 
     Card(
         modifier = Modifier
@@ -430,13 +434,15 @@ fun AgendaItemCard(
                     color = statusColor.copy(alpha = 0.12f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text(
-                        statusLabel,
-                        color = statusColor,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(typeLabel, color = statusColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("•", color = Color.Gray, fontSize = 11.sp)
+                        Text(statusLabel, color = statusColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
 
@@ -453,13 +459,13 @@ fun AgendaItemCard(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFE2E8F0)),
+                        .background(if (isExame) Color(0xFFF3E8FF) else Color(0xFFE2E8F0)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Aluno",
-                        tint = Color(0xFF64748B)
+                        imageVector = if (isExame) Icons.Default.School else Icons.Default.Person,
+                        contentDescription = if (isExame) "Exame" else "Aluno",
+                        tint = if (isExame) Color(0xFF9333EA) else Color(0xFF64748B)
                     )
                 }
 
@@ -472,22 +478,31 @@ fun AgendaItemCard(
                         fontSize = 15.sp,
                         color = Color(0xFF1E293B)
                     )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 2.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.DirectionsBike,
-                            contentDescription = "Moto",
-                            tint = Color(0xFF94A3B8),
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
+                    if (isExame) {
                         Text(
-                            "${item.motoModelo} • PLACA ${item.motoPlaca}",
+                            "Exame prático do DETRAN",
                             fontSize = 12.sp,
-                            color = Color(0xFF64748B)
+                            color = Color(0xFF9333EA),
+                            modifier = Modifier.padding(top = 2.dp)
                         )
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DirectionsBike,
+                                contentDescription = "Moto",
+                                tint = Color(0xFF94A3B8),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                "${item.motoModelo ?: ""} • PLACA ${item.motoPlaca ?: "—"}",
+                                fontSize = 12.sp,
+                                color = Color(0xFF64748B)
+                            )
+                        }
                     }
                 }
             }
@@ -519,58 +534,97 @@ fun AgendaItemCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Edit, Delete & Share buttons
-                Row {
-                    IconButton(
-                        onClick = { onEdit(item) },
-                        modifier = Modifier.testTag("edit_schedule_button_${item.id}")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Editar Agendamento",
-                            tint = Color(0xFF64748B)
-                        )
-                    }
-                    IconButton(
-                        onClick = { onDelete(item.id) },
-                        modifier = Modifier.testTag("delete_schedule_button_${item.id}")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Excluir Agendamento",
-                            tint = Color(0xFF94A3B8)
-                        )
-                    }
+                if (isExame) {
+                    // EXAME: somente compartilhar (edicao/remocao via cadastro do aluno)
+                    Text(
+                        "Gerenciado pelo cadastro do aluno",
+                        fontSize = 11.sp,
+                        color = Color(0xFF94A3B8),
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        modifier = Modifier.weight(1f)
+                    )
                     IconButton(
                         onClick = {
                             val dateFmt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(item.dataHora))
                             val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(item.dataHora))
                             val messageBuilder = StringBuilder()
-                            messageBuilder.append("📅 *Lembrete de Aula*\n\n")
+                            messageBuilder.append("📅 *Lembrete de Exame DETRAN*\n\n")
                             messageBuilder.append("Olá, ${item.alunoNome}!\n\n")
-                            messageBuilder.append("Este é um lembrete da sua aula prática.\n\n")
+                            messageBuilder.append("Este é um lembrete do seu exame prático.\n\n")
                             messageBuilder.append("📆 Data: $dateFmt\n")
                             messageBuilder.append("🕒 Horário: $timeFmt\n")
-                            if (item.observacoes.isNotBlank()) {
-                                messageBuilder.append("📍 Local: ${item.observacoes}\n")
-                            }
-                            messageBuilder.append("\nEm caso de necessidade, entre em contato com seu instrutor.")
+                            messageBuilder.append("\nBoa sorte! Em caso de dúvidas, entre em contato com seu instrutor.")
                             val message = messageBuilder.toString()
 
                             val sendIntent = Intent(Intent.ACTION_SEND).apply {
                                 putExtra(Intent.EXTRA_TEXT, message)
                                 type = "text/plain"
                             }
-                            val shareIntent = Intent.createChooser(sendIntent, "Compartilhar agendamento")
+                            val shareIntent = Intent.createChooser(sendIntent, "Compartilhar exame")
                             context.startActivity(shareIntent)
                         },
-                        modifier = Modifier.testTag("share_schedule_button_${item.id}")
+                        modifier = Modifier.testTag("share_exame_button_${item.id}")
                     ) {
                         Icon(
                             imageVector = Icons.Default.Share,
-                            contentDescription = "Compartilhar Agendamento",
-                            tint = Color(0xFF3B82F6)
+                            contentDescription = "Compartilhar Exame",
+                            tint = Color(0xFF9333EA)
                         )
+                    }
+                } else {
+                    // AULA: Edit, Delete & Share buttons (comportamento original)
+                    Row {
+                        IconButton(
+                            onClick = { onEdit(item) },
+                            modifier = Modifier.testTag("edit_schedule_button_${item.id}")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Editar Agendamento",
+                                tint = Color(0xFF64748B)
+                            )
+                        }
+                        IconButton(
+                            onClick = { onDelete(item.id) },
+                            modifier = Modifier.testTag("delete_schedule_button_${item.id}")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Excluir Agendamento",
+                                tint = Color(0xFF94A3B8)
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                val dateFmt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(item.dataHora))
+                                val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(item.dataHora))
+                                val messageBuilder = StringBuilder()
+                                messageBuilder.append("📅 *Lembrete de Aula*\n\n")
+                                messageBuilder.append("Olá, ${item.alunoNome}!\n\n")
+                                messageBuilder.append("Este é um lembrete da sua aula prática.\n\n")
+                                messageBuilder.append("📆 Data: $dateFmt\n")
+                                messageBuilder.append("🕒 Horário: $timeFmt\n")
+                                if (item.observacoes.isNotBlank()) {
+                                    messageBuilder.append("📍 Local: ${item.observacoes}\n")
+                                }
+                                messageBuilder.append("\nEm caso de necessidade, entre em contato com seu instrutor.")
+                                val message = messageBuilder.toString()
+
+                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                    putExtra(Intent.EXTRA_TEXT, message)
+                                    type = "text/plain"
+                                }
+                                val shareIntent = Intent.createChooser(sendIntent, "Compartilhar agendamento")
+                                context.startActivity(shareIntent)
+                            },
+                            modifier = Modifier.testTag("share_schedule_button_${item.id}")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Compartilhar Agendamento",
+                                tint = Color(0xFF3B82F6)
+                            )
+                        }
                     }
                 }
 
@@ -590,22 +644,38 @@ fun AgendaItemCard(
                             Text("Cancelar", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
 
-                        Button(
-                            onClick = {
-                                if (onStartAula != null) {
-                                    onStartAula(item.alunoId, item.id)
-                                } else {
-                                    onStatusChange(item.id, "realizada")
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
-                            modifier = Modifier
-                                .height(36.dp)
-                                .testTag("realize_schedule_button_${item.id}"),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                        ) {
-                            Text("Realizar", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        if (!isExame) {
+                            // Botao "Realizar" somente para AULA (nao para EXAME - exame nao inicia sessao de aula)
+                            Button(
+                                onClick = {
+                                    if (onStartAula != null) {
+                                        onStartAula(item.alunoId, item.id)
+                                    } else {
+                                        onStatusChange(item.id, "realizada")
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                                modifier = Modifier
+                                    .height(36.dp)
+                                    .testTag("realize_schedule_button_${item.id}"),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                            ) {
+                                Text("Realizar", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        } else {
+                            // EXAME: botao para marcar como realizada sem iniciar sessao
+                            Button(
+                                onClick = { onStatusChange(item.id, "realizada") },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9333EA)),
+                                modifier = Modifier
+                                    .height(36.dp)
+                                    .testTag("complete_exame_button_${item.id}"),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                            ) {
+                                Text("Concluir", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     } else if (item.status == "cancelada" || item.status == "realizada") {
                         // Reset back to agendada

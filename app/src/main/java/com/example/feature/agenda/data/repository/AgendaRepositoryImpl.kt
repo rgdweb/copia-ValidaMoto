@@ -39,6 +39,14 @@ class AgendaRepositoryImpl(private val db: AppDatabase) : AgendaRepository {
         agendamentoDao.delete(agendamento)
     }
 
+    override suspend fun getExameAgendamentoByAlunoId(alunoId: Long): Agendamento? {
+        return agendamentoDao.getExameAgendamentoByAlunoId(alunoId)
+    }
+
+    override suspend fun deleteAgendamentoById(id: Long) {
+        agendamentoDao.deleteById(id)
+    }
+
     override suspend fun auditLog(tipo: String, descricao: String) {
         val log = EventoLog(
             timestamp = System.currentTimeMillis(),

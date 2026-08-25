@@ -286,7 +286,10 @@ fun CadastrosScreen(viewModel: CadastrosViewModel) {
                         Text("CPF: ${aluno.cpf}", fontSize = 14.sp)
                     }
                     Text("Telefone: ${aluno.telefone}", fontSize = 14.sp)
-                    Text("Exame Agendado: ${aluno.dataExame}", fontSize = 14.sp)
+                    if (aluno.dataExame.isNotBlank()) {
+                        val horaExameFmt = if (aluno.horaExame.isNotBlank()) " ${aluno.horaExame}" else ""
+                        Text("Exame Agendado: ${aluno.dataExame}$horaExameFmt", fontSize = 14.sp)
+                    }
                     Text("Status: ${aluno.status}", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     Text("Aulas: ${aluno.aulasRealizadas} realizadas / ${aluno.aulasContratadas} contratadas", fontSize = 14.sp)
                     if (aluno.observacoes.isNotEmpty()) {
@@ -699,6 +702,7 @@ fun AddAlunoDialogForm(viewModel: CadastrosViewModel, onDismiss: () -> Unit) {
     var telefone by remember { mutableStateOf("") }
     var contratadas by remember { mutableStateOf("") }
     var examenDate by remember { mutableStateOf("") }
+    var examenTime by remember { mutableStateOf("") }
     var observacoes by remember { mutableStateOf("") }
     var photoPath by remember { mutableStateOf("") }
 
@@ -859,6 +863,19 @@ fun AddAlunoDialogForm(viewModel: CadastrosViewModel, onDismiss: () -> Unit) {
                 )
 
                 OutlinedTextField(
+                    value = examenTime,
+                    onValueChange = { input ->
+                        val clean = input.filter { it.isDigit() }.take(4)
+                        examenTime = clean
+                    },
+                    label = { Text("Hora do Exame (HH:mm)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Ex: 14:30") },
+                    visualTransformation = TimeVisualTransformation()
+                )
+
+                OutlinedTextField(
                     value = observacoes,
                     onValueChange = { observacoes = it },
                     label = { Text("Observações") },
@@ -885,6 +902,7 @@ fun AddAlunoDialogForm(viewModel: CadastrosViewModel, onDismiss: () -> Unit) {
                                 realizadas = 0,
                                 status = "Em andamento",
                                 exame = formatDate(examenDate),
+                                horaExame = formatTime(examenTime),
                                 obs = observacoes,
                                 foto = photoPath
                             )
@@ -1078,6 +1096,7 @@ fun EditAlunoDialogForm(aluno: Aluno, viewModel: CadastrosViewModel, onDismiss: 
     var realizadas by remember { mutableStateOf(aluno.aulasRealizadas.toString()) }
     var status by remember { mutableStateOf(aluno.status) }
     var examenDate by remember { mutableStateOf(aluno.dataExame.filter { it.isDigit() }) }
+    var examenTime by remember { mutableStateOf(aluno.horaExame.filter { it.isDigit() }) }
     var observacoes by remember { mutableStateOf(aluno.observacoes) }
     var photoPath by remember { mutableStateOf(aluno.fotoCadastro) }
 
@@ -1272,6 +1291,19 @@ fun EditAlunoDialogForm(aluno: Aluno, viewModel: CadastrosViewModel, onDismiss: 
                 )
 
                 OutlinedTextField(
+                    value = examenTime,
+                    onValueChange = { input ->
+                        val clean = input.filter { it.isDigit() }.take(4)
+                        examenTime = clean
+                    },
+                    label = { Text("Hora do Exame (HH:mm)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Ex: 14:30") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    visualTransformation = TimeVisualTransformation()
+                )
+
+                OutlinedTextField(
                     value = observacoes,
                     onValueChange = { observacoes = it },
                     label = { Text("Observações") },
@@ -1292,6 +1324,7 @@ fun EditAlunoDialogForm(aluno: Aluno, viewModel: CadastrosViewModel, onDismiss: 
                             aulasRealizadas = realizadas.toIntOrNull() ?: aluno.aulasRealizadas,
                             status = status,
                             dataExame = formatDate(examenDate),
+                            horaExame = formatTime(examenTime),
                             observacoes = observacoes,
                             fotoCadastro = photoPath
                         )
@@ -1502,6 +1535,48 @@ private fun formatDate(input: String): String {
         sb.append(clean[i])
     }
     return sb.toString()
+}
+
+private fun formatTime(input: String): String {
+    val clean = input.filter { it.isDigit() }.take(4)
+    if (clean.length < 4) return ""
+    val sb = StringBuilder()
+    for (i in clean.indices) {
+        if (i == 2) {
+            sb.append(':')
+        }
+        sb.append(clean[i])
+    }
+    return sb.toString()
+}
+
+class TimeVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val digits = text.text.filter { it.isDigit() }.take(4)
+        val formatted = StringBuilder()
+        for (i in digits.indices) {
+            if (i == 2) formatted.append(':')
+            formatted.append(digits[i])
+        }
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                val mapped = when {
+                    offset <= 2 -> offset
+                    else -> offset + 1
+                }
+                return mapped.coerceIn(0, formatted.length)
+            }
+            override fun transformedToOriginal(offset: Int): Int {
+                val mapped = when {
+                    offset <= 2 -> offset
+                    offset <= 3 -> 2
+                    else -> offset - 1
+                }
+                return mapped.coerceIn(0, digits.length)
+            }
+        }
+        return TransformedText(AnnotatedString(formatted.toString()), offsetMapping)
+    }
 }
 
 class CpfVisualTransformation : VisualTransformation {

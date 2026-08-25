@@ -17,6 +17,7 @@ data class Aluno(
     val aulasRealizadas: Int,
     val status: String, // "Em andamento" | "Concluído" | "Inativo"
     val dataExame: String,
+    val horaExame: String = "", // "HH:mm" - vazio quando exame nao tem hora definida
     val observacoes: String,
     val fotoCadastro: String
 )

@@ -13,5 +13,7 @@ interface AgendaRepository {
     suspend fun insertAgendamento(agendamento: Agendamento): Long
     suspend fun updateAgendamento(agendamento: Agendamento)
     suspend fun deleteAgendamento(agendamento: Agendamento)
+    suspend fun getExameAgendamentoByAlunoId(alunoId: Long): Agendamento?
+    suspend fun deleteAgendamentoById(id: Long)
     suspend fun auditLog(tipo: String, descricao: String)
 }

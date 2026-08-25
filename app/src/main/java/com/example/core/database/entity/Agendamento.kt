@@ -29,8 +29,9 @@ import androidx.room.Index
 data class Agendamento(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val alunoId: Long,
-    val motoId: Long,
+    val motoId: Long?, // nullable para permitir EXAME (sem moto)
     val dataHora: Long, // timestamp
     val status: String = "agendada", // "agendada" | "cancelada" | "realizada"
-    val observacoes: String = ""
+    val observacoes: String = "",
+    val tipo: String = "AULA" // "AULA" | "EXAME"
 )

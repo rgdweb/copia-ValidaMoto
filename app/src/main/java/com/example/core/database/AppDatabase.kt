@@ -78,8 +78,6 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("PRAGMA foreign_keys=OFF;")
-
-                // 1. Recreate aula_foto table
                 db.execSQL("""
                     CREATE TABLE IF NOT EXISTS `aula_foto_new` (
                         `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
@@ -95,8 +93,6 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("DROP TABLE `aula_foto`")
                 db.execSQL("ALTER TABLE `aula_foto_new` RENAME TO `aula_foto`")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_aula_foto_aulaId` ON `aula_foto` (`aulaId`)")
-
-                // 2. Recreate agendamento table
                 db.execSQL("""
                     CREATE TABLE IF NOT EXISTS `agendamento_new` (
                         `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
@@ -114,8 +110,6 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE `agendamento_new` RENAME TO `agendamento`")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_agendamento_alunoId` ON `agendamento` (`alunoId`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_agendamento_motoId` ON `agendamento` (`motoId`)")
-
-                // 3. Recreate aula table
                 db.execSQL("""
                     CREATE TABLE IF NOT EXISTS `aula_new` (
                         `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
@@ -147,7 +141,6 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_aula_alunoId` ON `aula` (`alunoId`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_aula_instrutorId` ON `aula` (`instrutorId`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_aula_motoId` ON `aula` (`motoId`)")
-
                 db.execSQL("PRAGMA foreign_keys=ON;")
             }
         }
@@ -155,15 +148,56 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("PRAGMA foreign_keys=OFF;")
-                db.execSQL("ALTER TABLE `aluno` ADD COLUMN `horaExame` TEXT NOT NULL DEFAULT ''")
-                db.execSQL("CREATE TABLE IF NOT EXISTS `agendamento_new` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `alunoId` INTEGER NOT NULL, `motoId` INTEGER, `dataHora` INTEGER NOT NULL, `status` TEXT NOT NULL, `observacoes` TEXT NOT NULL, `tipo` TEXT NOT NULL, FOREIGN KEY(`alunoId`) REFERENCES `aluno`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, FOREIGN KEY(`motoId`) REFERENCES `moto`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)")
+
+                // Rebuild aluno so the final schema matches Room exactly.
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `aluno_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `nome` TEXT NOT NULL,
+                        `cpf` TEXT NOT NULL,
+                        `telefone` TEXT NOT NULL,
+                        `aulasContratadas` INTEGER NOT NULL,
+                        `aulasRealizadas` INTEGER NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `dataExame` TEXT NOT NULL,
+                        `horaExame` TEXT NOT NULL,
+                        `observacoes` TEXT NOT NULL,
+                        `fotoCadastro` TEXT NOT NULL
+                    )
+                """)
+                db.execSQL("INSERT INTO `aluno_new` (`id`, `nome`, `cpf`, `telefone`, `aulasContratadas`, `aulasRealizadas`, `status`, `dataExame`, `horaExame`, `observacoes`, `fotoCadastro`) SELECT `id`, `nome`, `cpf`, `telefone`, `aulasContratadas`, `aulasRealizadas`, `status`, `dataExame`, '', `observacoes`, `fotoCadastro` FROM `aluno`")
+                db.execSQL("DROP TABLE `aluno`")
+                db.execSQL("CREATE TABLE `aluno` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nome` TEXT NOT NULL, `cpf` TEXT NOT NULL, `telefone` TEXT NOT NULL, `aulasContratadas` INTEGER NOT NULL, `aulasRealizadas` INTEGER NOT NULL, `status` TEXT NOT NULL, `dataExame` TEXT NOT NULL, `horaExame` TEXT NOT NULL, `observacoes` TEXT NOT NULL, `fotoCadastro` TEXT NOT NULL)")
+                db.execSQL("INSERT INTO `aluno` SELECT * FROM `aluno_new`")
+                db.execSQL("DROP TABLE `aluno_new`")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_aluno_cpf` ON `aluno` (`cpf`)")
+
+                // Rebuild agendamento with nullable motoId and the new tipo column.
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `agendamento_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `alunoId` INTEGER NOT NULL,
+                        `motoId` INTEGER,
+                        `dataHora` INTEGER NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `observacoes` TEXT NOT NULL,
+                        `tipo` TEXT NOT NULL,
+                        FOREIGN KEY(`alunoId`) REFERENCES `aluno`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION ,
+                        FOREIGN KEY(`motoId`) REFERENCES `moto`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+                    )
+                """)
                 db.execSQL("INSERT INTO `agendamento_new` (`id`, `alunoId`, `motoId`, `dataHora`, `status`, `observacoes`, `tipo`) SELECT `id`, `alunoId`, `motoId`, `dataHora`, `status`, `observacoes`, 'AULA' FROM `agendamento`")
                 db.execSQL("DROP TABLE `agendamento`")
-                db.execSQL("ALTER TABLE `agendamento_new` RENAME TO `agendamento`")
+                db.execSQL("CREATE TABLE `agendamento` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `alunoId` INTEGER NOT NULL, `motoId` INTEGER, `dataHora` INTEGER NOT NULL, `status` TEXT NOT NULL, `observacoes` TEXT NOT NULL, `tipo` TEXT NOT NULL, FOREIGN KEY(`alunoId`) REFERENCES `aluno`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`motoId`) REFERENCES `moto`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)")
+                db.execSQL("INSERT INTO `agendamento` SELECT * FROM `agendamento_new`")
+                db.execSQL("DROP TABLE `agendamento_new`")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_agendamento_alunoId` ON `agendamento` (`alunoId`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_agendamento_motoId` ON `agendamento` (`motoId`)")
+
+                // Existing valid exam dates become EXAME entries; blank/invalid dates do nothing.
                 db.execSQL("INSERT INTO `agendamento` (`alunoId`, `motoId`, `dataHora`, `status`, `observacoes`, `tipo`) SELECT a.`id`, NULL, 0, 'agendada', 'EXAME migrado', 'EXAME' FROM `aluno` a WHERE a.`dataExame` IS NOT NULL AND a.`dataExame` != '' AND length(a.`dataExame`) = 10 AND substr(a.`dataExame`, 3, 1) = '/' AND substr(a.`dataExame`, 6, 1) = '/' AND NOT EXISTS (SELECT 1 FROM `agendamento` ag2 WHERE ag2.`alunoId` = a.`id` AND ag2.`tipo` = 'EXAME')")
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_agendamento_exame_aluno_unique` ON `agendamento`(`alunoId`) WHERE `tipo` = 'EXAME'")
+
                 db.execSQL("PRAGMA foreign_keys=ON;")
             }
         }
@@ -175,9 +209,9 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "valida_moto_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
-                .fallbackToDestructiveMigration()
-                .build()
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .fallbackToDestructiveMigrationOnDowngrade()
+                    .build()
                 INSTANCE = instance
                 instance
             }

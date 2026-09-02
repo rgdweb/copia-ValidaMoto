@@ -1,0 +1,64 @@
+================================================================
+POSITIVO Q464C - DESBLOQUEIO DE BIOS - INSTRUCOES DE GRAVACAO
+================================================================
+
+ARQUIVOS GERADOS (chip W25Q64JW-IQ, 8MB exatos, 8.388.608 bytes):
+
+1) Q464C_FIX1_HIBRIDO_sem_senha_8MB.bin   <<< USE ESTE PRIMEIRO
+   MD5 : 14328d538d0761fe998173b648841462
+   - Regiao do ME e da BIOS = do SEU backup original (boota com certeza)
+   - Regiao NVRAM = padrao de fabrica (senha removida)
+   - Chave do Windows preservada (H8DWN-CDWHQ-J8HY8-FPMGH-T3BMP)
+
+2) Q464C_FIX2_internet_ajustado_8MB.bin   <<< PLANO B
+   MD5 : c9f1b41465be46701b6b847868641d27
+   - O arquivo que voce baixou, corrigido:
+     * removidos 1040 bytes de lixo (FF) do final que podiam
+       quebrar a gravacao (o original tinha 8.388.9648 bytes!)
+     * removido hash de senha de outra maquina (AMITSESetup)
+
+O QUE FOI FEITO NA ANALISE:
+- Confirmado: mesma versao de firmware nos dois arquivos
+- A senha NAO estava na variavel padrao AMITSESetup (estava zerada)
+- O seu dump tinha o flag de checagem de senha ativo na NVRAM
+  (Setup byte 1 = 01, fabrica = 00) e estados de variaveis travados
+- O arquivo da internet tinha dados de OUTRA maquina (serial
+  11170348A1221J04QU, chave RJDXN-VD8XC-4P64H-P6T8H-CYT4C)
+
+COMO GRAVAR (programador CH341A / ASProgrammer / NeoProgrammer):
+
+PASSO 0 - IMPORTANTE: o chip W25Q64JW e' de 1.8V!
+  - Se usar CH341A comum (3.3V), Leia funciona, mas a GRAVACAO
+    pode falhar silenciosamente. O ideal e' adaptador 1.8V.
+  - Gravou sem adaptador 1.8V? Faca "Verify" logo apos gravar!
+
+PASSO 1 - Leia o chip ATUAL (o que esta piscando) e salve como
+  "estado_atual.bin". Guarde esse backup.
+
+PASSO 2 - Apague o chip (Erase / Chip Erase) e confira se ficou
+  tudo FF.
+
+PASSO 3 - Abra o FIX1, grave (Write/Program).
+
+PASSO 4 - Verify! Leia de volta e compare com o FIX1 (md5:
+  14328d538d0761fe998173b648841462). Se nao bater, regrave.
+
+PASSO 5 - Monte o note e ligue. Primeiro boot pode demorar mais
+  (a BIOS reconstroi a NVRAM) e pode pedir para apertar F1/F2.
+
+SE AINDA PEDIR SENHA com o FIX1:
+  - Tente so apertar ENTER sem digitar nada (senha vazia)
+  - Se pedir mesmo assim, grave o FIX2 (repita passos 2 a 4)
+
+SE LIGAR E FICAR SÓ NO LED PISCANDO com o FIX2:
+  - Volte para o FIX1 (ele usa o ME da sua maquina, que boota)
+  - Isso indicaria incompatibilidade da regiao ME do arquivo da
+    internet com a sua placa
+
+AVISOS:
+- Se o Windows pede chave de recuperacao (BitLocker), a chave esta
+  na sua conta Microsoft em https://account.microsoft.com/devices
+- A chave do Windows impressa na BIOS do FIX2 e' de outra maquina;
+  o Windows nao sera desativado por isso, mas prefira o FIX1
+- Sempre confira o MD5 do arquivo antes de gravar
+================================================================
